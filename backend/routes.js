@@ -371,6 +371,11 @@ router.get('/dashboard/stats', requireAdminOrSuperAdmin, async (req, res) => {
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
         break;
+      case '15days':
+        startDate.setDate(startDate.getDate() - 14);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
       case '30days':
         startDate.setDate(startDate.getDate() - 29);
         startDate.setHours(0, 0, 0, 0);
@@ -398,7 +403,9 @@ router.get('/dashboard/stats', requireAdminOrSuperAdmin, async (req, res) => {
 
     // Determine days to display in trend chart
     let chartDays = 7;
-    if (filterType === '30days') {
+    if (filterType === '15days') {
+      chartDays = 15;
+    } else if (filterType === '30days') {
       chartDays = 30;
     } else if (filterType === '90days' || filterType === '3months') {
       chartDays = 90;

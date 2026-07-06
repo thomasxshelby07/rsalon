@@ -96,6 +96,7 @@ export default function Dashboard() {
         today: "Today's Revenue",
         yesterday: "Yesterday's Revenue",
         '7days': "7 Days Revenue",
+        '15days': "15 Days Revenue",
         '30days': "30 Days Revenue",
         '90days': "3 Months Revenue",
         this_month: "This Month Revenue"
@@ -104,6 +105,7 @@ export default function Dashboard() {
         today: "Today's Visits",
         yesterday: "Yesterday's Visits",
         '7days': "7 Days Visits",
+        '15days': "15 Days Visits",
         '30days': "30 Days Visits",
         '90days': "3 Months Visits",
         this_month: "This Month Visits"
@@ -112,6 +114,7 @@ export default function Dashboard() {
         today: "Today's Services",
         yesterday: "Yesterday's Services",
         '7days': "7 Days Services",
+        '15days': "15 Days Services",
         '30days': "30 Days Services",
         '90days': "3 Months Services",
         this_month: "This Month Services"
@@ -120,6 +123,7 @@ export default function Dashboard() {
         today: "Today's Avg Ticket",
         yesterday: "Yesterday's Avg Ticket",
         '7days': "7 Days Avg Ticket",
+        '15days': "15 Days Avg Ticket",
         '30days': "30 Days Avg Ticket",
         '90days': "3 Months Avg Ticket",
         this_month: "This Month Avg Ticket"
@@ -144,6 +148,11 @@ export default function Dashboard() {
         const start = new Date();
         start.setDate(start.getDate() - 6);
         return `Last 7 Days (${start.toLocaleDateString('en-US', options)} - ${now.toLocaleDateString('en-US', options)})`;
+      }
+      case '15days': {
+        const start = new Date();
+        start.setDate(start.getDate() - 14);
+        return `Last 15 Days (${start.toLocaleDateString('en-US', options)} - ${now.toLocaleDateString('en-US', options)})`;
       }
       case '30days': {
         const start = new Date();
@@ -170,6 +179,7 @@ export default function Dashboard() {
       today: "Today's Payment Modes",
       yesterday: "Yesterday's Payment Modes",
       '7days': "7 Days Payment Modes",
+      '15days': "15 Days Payment Modes",
       '30days': "30 Days Payment Modes",
       '90days': "3 Months Payment Modes",
       this_month: "This Month Payment Modes"
@@ -217,58 +227,115 @@ export default function Dashboard() {
           Add Customer Entry
         </Link>
       </div>
-
       {/* Global Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl shadow-soft border border-slate-100/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl self-start">
-            {[
-              { label: 'Today', value: 'today' },
-              { label: 'Yesterday', value: 'yesterday' },
-              { label: 'Last 7 Days', value: '7days' },
-              { label: 'Last 30 Days', value: '30days' },
-              { label: 'Last 3 Months', value: '90days' },
-              { label: 'This Month', value: 'this_month' }
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => {
-                  setFilterType(opt.value);
-                  handleFilterChange(opt.value, selectedService);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  filterType === opt.value
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+      <div className="bg-white p-4 rounded-2xl shadow-soft border border-slate-100/60">
+        {/* Desktop View (Pills + Select side-by-side) */}
+        <div className="hidden md:flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl self-start">
+              {[
+                { label: 'Today', value: 'today' },
+                { label: 'Yesterday', value: 'yesterday' },
+                { label: 'Last 7 Days', value: '7days' },
+                { label: 'Last 15 Days', value: '15days' },
+                { label: 'Last 30 Days', value: '30days' },
+                { label: 'Last 3 Months', value: '90days' },
+                { label: 'This Month', value: 'this_month' }
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setFilterType(opt.value);
+                    handleFilterChange(opt.value, selectedService);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    filterType === opt.value
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-[11px] text-slate-455 font-semibold tracking-wide flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-slate-400" /> {getFilterRangeDescription()}
+            </span>
           </div>
-          <span className="text-[11px] text-slate-450 font-semibold tracking-wide flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" /> {getFilterRangeDescription()}
-          </span>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0">
+              <Filter className="w-3.5 h-3.5 text-slate-400" /> Service:
+            </span>
+            <select
+              value={selectedService}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSelectedService(val);
+                handleFilterChange(filterType, val);
+              }}
+              className="form-input !py-1.5 !px-3 text-xs font-bold text-slate-755 bg-white border border-slate-200 cursor-pointer min-w-[150px] max-w-[200px]"
+            >
+              <option value="All">All Services</option>
+              {servicesList.map(s => (
+                <option key={s._id} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 shrink-0">
-            <Filter className="w-3.5 h-3.5 text-slate-400" /> Service:
+        {/* Mobile View (2 Column Dropdowns Grid) */}
+        <div className="flex flex-col gap-3 md:hidden">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Time range select */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Calendar className="w-3 h-3 text-slate-400" /> Date Range
+              </label>
+              <select
+                value={filterType}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFilterType(val);
+                  handleFilterChange(val, selectedService);
+                }}
+                className="form-input !py-1.5 !px-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 cursor-pointer w-full"
+              >
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="7days">Last 7 Days</option>
+                <option value="15days">Last 15 Days</option>
+                <option value="30days">Last 30 Days</option>
+                <option value="90days">Last 3 Months</option>
+                <option value="this_month">This Month</option>
+              </select>
+            </div>
+
+            {/* Service select */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Filter className="w-3 h-3 text-slate-400" /> Service Filter
+              </label>
+              <select
+                value={selectedService}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedService(val);
+                  handleFilterChange(filterType, val);
+                }}
+                className="form-input !py-1.5 !px-2.5 text-xs font-bold text-slate-755 bg-white border border-slate-200 cursor-pointer w-full"
+              >
+                <option value="All">All Services</option>
+                {servicesList.map(s => (
+                  <option key={s._id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <span className="text-[10px] text-slate-455 font-bold tracking-wide flex items-center gap-1 bg-slate-50 p-2 rounded-xl border border-slate-100/50">
+            <Calendar className="w-3 h-3 text-slate-400" /> {getFilterRangeDescription()}
           </span>
-          <select
-            value={selectedService}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSelectedService(val);
-              handleFilterChange(filterType, val);
-            }}
-            className="form-input !py-1.5 !px-3 text-xs font-bold text-slate-755 bg-white border border-slate-200 cursor-pointer min-w-[150px] max-w-[200px]"
-          >
-            <option value="All">All Services</option>
-            {servicesList.map(s => (
-              <option key={s._id} value={s.name}>{s.name}</option>
-            ))}
-          </select>
         </div>
       </div>
 
@@ -337,6 +404,7 @@ export default function Dashboard() {
             {loading ? <Sk w="w-14" h="h-6" /> : (
               <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{formatAmt(stats?.averageBill)}</span>
             )}
+          </div>
         </div>
       </div>
 
