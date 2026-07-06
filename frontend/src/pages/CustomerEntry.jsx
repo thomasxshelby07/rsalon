@@ -15,7 +15,8 @@ import {
   Layers,
   Search,
   CheckSquare,
-  Square
+  Square,
+  Clock
 } from 'lucide-react';
 import apiCall from '../api';
 
@@ -47,6 +48,9 @@ export default function CustomerEntry() {
   // Autocomplete customer search
   const [customerSearchResults, setCustomerSearchResults] = useState([]);
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [nameSearchResults, setNameSearchResults] = useState([]);
+  const [showNameDropdown, setShowNameDropdown] = useState(false);
+  const [isSelectingCustomer, setIsSelectingCustomer] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,8 +74,9 @@ export default function CustomerEntry() {
     fetchData();
   }, []);
 
-  // Customer search autocomplete
+  // Customer search autocomplete by Phone
   useEffect(() => {
+    if (isSelectingCustomer) return;
     if (customerPhone.length >= 3) {
       const searchCustomers = async () => {
         try {
@@ -87,13 +92,41 @@ export default function CustomerEntry() {
       setCustomerSearchResults([]);
       setShowCustomerDropdown(false);
     }
-  }, [customerPhone]);
+  }, [customerPhone, isSelectingCustomer]);
+
+  // Customer search autocomplete by Name
+  useEffect(() => {
+    if (isSelectingCustomer) return;
+    if (customerName.trim().length >= 2) {
+      const searchByName = async () => {
+        try {
+          const res = await apiCall(`/customers/search?q=${encodeURIComponent(customerName.trim())}`);
+          setNameSearchResults(res);
+          setShowNameDropdown(res.length > 0);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+      const delayDebounceFn = setTimeout(() => {
+        searchByName();
+      }, 300);
+      return () => clearTimeout(delayDebounceFn);
+    } else {
+      setNameSearchResults([]);
+      setShowNameDropdown(false);
+    }
+  }, [customerName, isSelectingCustomer]);
 
   const selectExistingCustomer = (cust) => {
+    setIsSelectingCustomer(true);
     setCustomerName(cust.name);
     setCustomerPhone(cust.phone);
     setShowCustomerDropdown(false);
+    setShowNameDropdown(false);
     toast.success(`Selected customer: ${cust.name}`);
+    setTimeout(() => {
+      setIsSelectingCustomer(false);
+    }, 500);
   };
 
   // Service quantity management
@@ -237,7 +270,7 @@ export default function CustomerEntry() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Customer Name */}
-              <div>
+              <div className="relative">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Customer Name</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -251,6 +284,23 @@ export default function CustomerEntry() {
                     className="form-input !pl-11"
                   />
                 </div>
+
+                {/* Name Autocomplete Dropdown */}
+                {showNameDropdown && (
+                  <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-150 rounded-2xl shadow-xl z-20 max-h-48 overflow-y-auto divide-y divide-slate-50">
+                    {nameSearchResults.map(c => (
+                      <button
+                        key={c._id}
+                        type="button"
+                        onClick={() => selectExistingCustomer(c)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-xs font-semibold text-slate-700 flex justify-between items-center"
+                      >
+                        <span>{c.name}</span>
+                        <span className="text-slate-400 font-medium">{c.phone}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Phone Input with dropdown search */}
