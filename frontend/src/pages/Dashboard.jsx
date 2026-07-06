@@ -549,7 +549,7 @@ export default function Dashboard() {
           <div>
             <h3 className="font-bold text-slate-800 text-sm">{getPaymentModeTitle()}</h3>
             <p className="text-xs text-slate-400">Breakdown of collections by modes</p>
-          </div>      </div>
+          </div>
 
           <div className="my-6 space-y-4">
             {/* Cash */}
