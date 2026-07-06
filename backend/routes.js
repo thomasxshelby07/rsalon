@@ -267,13 +267,37 @@ router.post('/entries', requireAdminOrSuperAdmin, async (req, res) => {
       if (Math.round(totalBreakdown) !== Math.round(finalAmount)) {
         return res.status(400).json({ message: `For Mixed payment, breakdown sum (${totalBreakdown}) must equal Final Amount (${finalAmount})` });
       }
+    } else if (paymentMode === 'Partial') {
+      const due = Number(req.body.dueAmount || 0);
+      if (due <= 0) {
+        return res.status(400).json({ message: 'Due Amount must be greater than 0 for Partial payment' });
+      }
+      if (due >= finalAmount) {
+        return res.status(400).json({ message: 'Due Amount cannot be equal to or exceed Final Amount' });
+      }
+      const totalBreakdown = Number(paymentBreakdown.cash || 0) + Number(paymentBreakdown.upi || 0) + Number(paymentBreakdown.card || 0);
+      if (Math.round(totalBreakdown + due) !== Math.round(finalAmount)) {
+        return res.status(400).json({ message: `Breakdown sum (${totalBreakdown}) + Due Amount (${due}) must equal Final Amount (${finalAmount})` });
+      }
     } else {
       paymentBreakdown.cash = paymentMode === 'Cash' ? finalAmount : 0;
       paymentBreakdown.upi = paymentMode === 'UPI' ? finalAmount : 0;
       paymentBreakdown.card = paymentMode === 'Card' ? finalAmount : 0;
     }
 
-    const entry = new Entry({ customer: customer._id, staff: staffId, services, subtotal, discount, finalAmount, paymentMode, paymentBreakdown, notes });
+    const entry = new Entry({ 
+      customer: customer._id, 
+      staff: staffId, 
+      services, 
+      subtotal, 
+      discount, 
+      finalAmount, 
+      paymentMode, 
+      paymentBreakdown, 
+      dueAmount: paymentMode === 'Partial' ? Number(req.body.dueAmount || 0) : 0,
+      dueStatus: paymentMode === 'Partial' ? 'pending' : 'paid',
+      notes 
+    });
     await entry.save();
 
     const populated = await Entry.findById(entry._id).populate('customer').populate('staff');
@@ -287,11 +311,15 @@ router.post('/entries', requireAdminOrSuperAdmin, async (req, res) => {
 // Get entries (Search & History)
 router.get('/entries', requireAdminOrSuperAdmin, async (req, res) => {
   try {
-    const { search, filter, startDate, endDate, page = 1, limit = 20, staffId, serviceName } = req.query;
+    const { search, filter, startDate, endDate, page = 1, limit = 20, staffId, serviceName, dueStatus } = req.query;
     const query = {};
 
-    const range = getDateRange(filter, startDate, endDate);
-    query.createdAt = { $gte: range.start, $lte: range.end };
+    if (dueStatus) {
+      query.dueStatus = dueStatus;
+    } else {
+      const range = getDateRange(filter, startDate, endDate);
+      query.createdAt = { $gte: range.start, $lte: range.end };
+    }
 
     if (staffId && staffId !== 'All') { query.staff = staffId; }
     if (serviceName && serviceName !== 'All') { query['services.name'] = serviceName; }
@@ -330,6 +358,49 @@ router.delete('/entries/:id', requireSuperAdmin, async (req, res) => {
     res.json({ message: 'Entry deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete entry', error: error.message });
+  }
+});
+
+// Clear entry due
+router.put('/entries/:id/clear-due', requireAdminOrSuperAdmin, async (req, res) => {
+  try {
+    const { paymentMode } = req.body; // 'Cash' or 'UPI'
+    if (!paymentMode || !['Cash', 'UPI'].includes(paymentMode)) {
+      return res.status(400).json({ message: 'Valid payment mode (Cash or UPI) is required' });
+    }
+
+    const entry = await Entry.findById(req.params.id);
+    if (!entry) return res.status(404).json({ message: 'Entry not found' });
+
+    if (entry.dueStatus !== 'pending' || entry.dueAmount <= 0) {
+      return res.status(400).json({ message: 'No pending dues for this entry' });
+    }
+
+    const clearAmt = entry.dueAmount;
+    
+    // Add to breakdown
+    if (!entry.paymentBreakdown) {
+      entry.paymentBreakdown = { cash: 0, upi: 0, card: 0 };
+    }
+    
+    if (paymentMode === 'Cash') {
+      entry.paymentBreakdown.cash = (entry.paymentBreakdown.cash || 0) + clearAmt;
+    } else if (paymentMode === 'UPI') {
+      entry.paymentBreakdown.upi = (entry.paymentBreakdown.upi || 0) + clearAmt;
+    }
+
+    entry.dueAmount = 0;
+    entry.dueStatus = 'paid';
+    entry.dueClearMethod = paymentMode;
+    entry.dueClearedAt = new Date();
+
+    await entry.save();
+    
+    const populated = await Entry.findById(entry._id).populate('customer').populate('staff');
+    res.json(populated);
+  } catch (error) {
+    console.error('Failed to clear due:', error);
+    res.status(550).json({ message: 'Failed to clear due', error: error.message });
   }
 });
 
@@ -420,7 +491,7 @@ router.get('/dashboard/stats', requireAdminOrSuperAdmin, async (req, res) => {
     const svcMatch = serviceName !== 'All' ? { 'services.name': serviceName } : {};
 
     // ALL queries run in PARALLEL — no sequential waiting
-    const [periodEntries, recentEntries, monthlyAgg, chartAgg, topStaffAgg, topServicesAgg] = await Promise.all([
+    const [periodEntries, recentEntries, monthlyAgg, chartAgg, topStaffAgg, topServicesAgg, pendingDuesAgg] = await Promise.all([
 
       // 1. Period entries (lean = fast, no Mongoose overhead)
       Entry.find({ createdAt: { $gte: startDate, $lte: endDate }, ...svcMatch }).lean(),
@@ -464,6 +535,12 @@ router.get('/dashboard/stats', requireAdminOrSuperAdmin, async (req, res) => {
         { $sort: { count: -1 } },
         { $limit: 5 },
         { $project: { name: '$_id', count: 1, revenue: 1, _id: 0 } }
+      ]),
+
+      // 7. Pending dues count & sum
+      Entry.aggregate([
+        { $match: { dueStatus: 'pending', dueAmount: { $gt: 0 } } },
+        { $group: { _id: null, totalDue: { $sum: '$dueAmount' }, count: { $sum: 1 } } }
       ])
     ]);
 
@@ -502,7 +579,11 @@ router.get('/dashboard/stats', requireAdminOrSuperAdmin, async (req, res) => {
       monthlyCustomers: monthlyAgg[0]?.count || 0,
       topStaff: topStaffAgg.filter(s => s.name),
       topServices: topServicesAgg,
-      revenueChart: dailyRevenueChart
+      revenueChart: dailyRevenueChart,
+      pendingDues: {
+        totalAmount: pendingDuesAgg[0]?.totalDue || 0,
+        count: pendingDuesAgg[0]?.count || 0
+      }
     });
 
   } catch (error) {
@@ -518,12 +599,13 @@ router.get('/reports', requireSuperAdmin, async (req, res) => {
 
     const entries = await Entry.find({ createdAt: { $gte: range.start, $lte: range.end } }).populate('customer').populate('staff');
 
-    let revenue = 0, customerCount = entries.length, discountTotal = 0, cash = 0, upi = 0, card = 0;
+    let revenue = 0, customerCount = entries.length, discountTotal = 0, dueTotal = 0, cash = 0, upi = 0, card = 0;
     const staffStats = {}, serviceStats = {}, dailyStats = {};
 
     entries.forEach(entry => {
       revenue += entry.finalAmount;
       discountTotal += entry.discount;
+      dueTotal += entry.dueAmount || 0;
       cash += entry.paymentBreakdown.cash || 0;
       upi += entry.paymentBreakdown.upi || 0;
       card += entry.paymentBreakdown.card || 0;
@@ -549,7 +631,7 @@ router.get('/reports', requireSuperAdmin, async (req, res) => {
     const averageBill = customerCount > 0 ? Math.round(revenue / customerCount) : 0;
 
     res.json({
-      summary: { revenue, customerCount, averageBill, discountTotal, payments: { cash, upi, card } },
+      summary: { revenue, customerCount, averageBill, discountTotal, dueTotal, payments: { cash, upi, card } },
       staffPerformance: Object.values(staffStats).sort((a, b) => b.revenue - a.revenue),
       serviceSales: Object.values(serviceStats).sort((a, b) => b.count - a.count),
       chartData: Object.values(dailyStats)

@@ -219,13 +219,24 @@ export default function Dashboard() {
               : 'Add customer entries, check daily receipts, and view staff registers.'}
           </p>
         </div>
-        <Link
-          to="/customer-entry"
-          className="btn-accent shadow-lg shadow-accent/10 self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          Add Customer Entry
-        </Link>
+        <div className="flex items-center gap-3 flex-wrap self-start md:self-auto">
+          {stats?.pendingDues?.count > 0 && (
+            <Link
+              to="/customer-history?tab=dues"
+              className="px-4 py-2.5 bg-rose-50 border border-rose-200 text-rose-750 hover:bg-rose-100/70 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+            >
+              <Clock className="w-4 h-4 text-rose-600 animate-pulse" />
+              Pending Dues: {formatAmt(stats.pendingDues.totalAmount)} ({stats.pendingDues.count})
+            </Link>
+          )}
+          <Link
+            to="/customer-entry"
+            className="btn-accent shadow-lg shadow-accent/10"
+          >
+            <Plus className="w-4 h-4" />
+            Add Customer Entry
+          </Link>
+        </div>
       </div>
       {/* Global Filter Bar */}
       <div className="bg-white p-4 rounded-2xl shadow-soft border border-slate-100/60">

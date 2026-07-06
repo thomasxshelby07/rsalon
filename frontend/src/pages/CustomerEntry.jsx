@@ -35,6 +35,8 @@ export default function CustomerEntry() {
   const [discount, setDiscount] = useState(0);
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [paymentBreakdown, setPaymentBreakdown] = useState({ cash: 0, upi: 0, card: 0 });
+  const [partialPaidAmount, setPartialPaidAmount] = useState(0);
+  const [partialPaymentMethod, setPartialPaymentMethod] = useState('Cash');
   const [notes, setNotes] = useState('');
 
   // Service UI states
@@ -161,6 +163,17 @@ export default function CustomerEntry() {
       }
     }
 
+    if (paymentMode === 'Partial') {
+      if (Number(partialPaidAmount) <= 0) {
+        toast.error('Paid amount must be greater than 0 for partial payment');
+        return;
+      }
+      if (Number(partialPaidAmount) >= finalAmount) {
+        toast.error('Paid amount cannot be equal to or greater than Final Amount (use standard payment modes)');
+        return;
+      }
+    }
+
     const payload = {
       customerName,
       customerPhone,
@@ -171,7 +184,14 @@ export default function CustomerEntry() {
       ),
       discount: Number(discount),
       paymentMode,
-      paymentBreakdown: paymentMode === 'Mixed' ? paymentBreakdown : { cash: 0, upi: 0, card: 0 },
+      paymentBreakdown: paymentMode === 'Mixed' ? paymentBreakdown : 
+                        paymentMode === 'Partial' ? {
+                          cash: partialPaymentMethod === 'Cash' ? Number(partialPaidAmount) : 0,
+                          upi: partialPaymentMethod === 'UPI' ? Number(partialPaidAmount) : 0,
+                          card: partialPaymentMethod === 'Card' ? Number(partialPaidAmount) : 0
+                        } : { cash: 0, upi: 0, card: 0 },
+      dueAmount: paymentMode === 'Partial' ? (finalAmount - Number(partialPaidAmount)) : 0,
+      dueStatus: paymentMode === 'Partial' ? 'pending' : 'paid',
       notes
     };
 
@@ -492,8 +512,8 @@ export default function CustomerEntry() {
             <div className="space-y-3">
               <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Payment Mode</label>
               
-              <div className="grid grid-cols-4 gap-1.5">
-                {['Cash', 'UPI', 'Card', 'Mixed'].map(mode => (
+              <div className="grid grid-cols-5 gap-1.5">
+                {['Cash', 'UPI', 'Card', 'Mixed', 'Partial'].map(mode => (
                   <button
                     key={mode}
                     type="button"
@@ -508,11 +528,64 @@ export default function CustomerEntry() {
                     {mode === 'UPI' && <Smartphone className="w-3.5 h-3.5" />}
                     {mode === 'Card' && <CreditCard className="w-3.5 h-3.5" />}
                     {mode === 'Mixed' && <Layers className="w-3.5 h-3.5" />}
+                    {mode === 'Partial' && <Clock className="w-3.5 h-3.5" />}
                     {mode}
                   </button>
                 ))}
               </div>
             </div>
+
+            {/* Partial Payment Details (Conditional) */}
+            {paymentMode === 'Partial' && (
+              <div className="p-4 bg-rose-50/50 border border-rose-100 rounded-2xl space-y-3">
+                <span className="block text-[10px] font-bold text-rose-600 uppercase tracking-wider">Partial Payment Settings</span>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-650">
+                    <span className="block">Paid Amount Now</span>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      min="0"
+                      max={finalAmount}
+                      value={partialPaidAmount === 0 ? '' : partialPaidAmount}
+                      onChange={(e) => {
+                        const val = Math.min(finalAmount, Math.max(0, Number(e.target.value)));
+                        setPartialPaidAmount(val);
+                      }}
+                      className="w-28 px-2 py-1 bg-white border border-slate-200 text-right rounded-lg focus:outline-none focus:border-accent text-xs font-bold text-slate-800"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-650">
+                    <span className="block">Paid Via</span>
+                    <div className="flex gap-1">
+                      {['Cash', 'UPI', 'Card'].map(method => (
+                        <button
+                          key={method}
+                          type="button"
+                          onClick={() => setPartialPaymentMethod(method)}
+                          className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all ${
+                            partialPaymentMethod === method
+                              ? 'bg-slate-700 border-slate-700 text-white shadow-sm'
+                              : 'bg-white border-slate-200 text-slate-550 hover:bg-slate-50'
+                          }`}
+                        >
+                          {method}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/50 flex justify-between text-[11px] font-bold text-slate-550">
+                  <span>Due Amount:</span>
+                  <span className="text-red-500 font-extrabold">
+                    ₹{finalAmount - partialPaidAmount}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Mixed Payment Details (Conditional) */}
             {paymentMode === 'Mixed' && (

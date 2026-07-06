@@ -17,7 +17,9 @@ import {
   Users,
   Award,
   History,
-  Trash2
+  Trash2,
+  Smartphone,
+  Wallet
 } from 'lucide-react';
 import apiCall from '../api';
 import { toast } from 'react-hot-toast';
@@ -27,6 +29,7 @@ export default function CustomerHistory() {
   
   // Search query from URL param
   const urlSearch = searchParams.get('search') || '';
+  const urlTab = searchParams.get('tab') || 'all';
 
   // Local state
   const [entries, setEntries] = useState([]);
@@ -42,9 +45,12 @@ export default function CustomerHistory() {
   const [totalEntries, setTotalEntries] = useState(0);
 
   // CRM Tab States
-  const [activeTab, setActiveTab] = useState('all'); // all, repeat
+  const [activeTab, setActiveTab] = useState(urlTab); // all, repeat, dues
   const [repeatCustomers, setRepeatCustomers] = useState([]);
   const [repeatLoading, setRepeatLoading] = useState(false);
+
+  const [selectedDueEntry, setSelectedDueEntry] = useState(null);
+  const [showDueModal, setShowDueModal] = useState(false);
 
   const [staffFilter, setStaffFilter] = useState('All');
   const [serviceFilter, setServiceFilter] = useState('All');
@@ -52,6 +58,12 @@ export default function CustomerHistory() {
   const [serviceList, setServiceList] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
   const role = localStorage.getItem('role');
+
+  useEffect(() => {
+    if (urlTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]);
 
   const handleDelete = async (entryId) => {
     if (!window.confirm('Kya aap is entry ko permanently delete karna chahte hain?')) return;
@@ -61,6 +73,28 @@ export default function CustomerHistory() {
       toast.success('Entry deleted successfully');
     } catch (err) {
       toast.error(err.message || 'Failed to delete entry');
+    }
+  };
+
+  const openClearDueDialog = (entry) => {
+    setSelectedDueEntry(entry);
+    setShowDueModal(true);
+  };
+
+  const handleClearDueSubmit = async (method) => {
+    try {
+      const loadingToast = toast.loading(`Clearing due of ₹${selectedDueEntry.dueAmount} via ${method}...`);
+      await apiCall(`/entries/${selectedDueEntry._id}/clear-due`, {
+        method: 'PUT',
+        body: { paymentMode: method }
+      });
+      toast.dismiss(loadingToast);
+      toast.success('Due payment received and registry updated!');
+      setShowDueModal(false);
+      setSelectedDueEntry(null);
+      fetchEntries(); // Refresh lists
+    } catch (err) {
+      toast.error(err.message || 'Failed to clear due');
     }
   };
 
@@ -107,12 +141,16 @@ export default function CustomerHistory() {
       setLoading(true);
       const params = new URLSearchParams({
         search: urlSearch,
-        filter: dateFilter,
+        filter: activeTab === 'dues' ? 'all' : dateFilter,
         page: page.toString(),
         limit: '15'
       });
 
-      if (dateFilter === 'custom') {
+      if (activeTab === 'dues') {
+        params.append('dueStatus', 'pending');
+      }
+
+      if (dateFilter === 'custom' && activeTab !== 'dues') {
         if (startDate) params.append('startDate', startDate);
         if (endDate) params.append('endDate', endDate);
       }
@@ -139,7 +177,7 @@ export default function CustomerHistory() {
 
   useEffect(() => {
     fetchEntries();
-  }, [urlSearch, dateFilter, page, staffFilter, serviceFilter]);
+  }, [urlSearch, dateFilter, page, staffFilter, serviceFilter, activeTab]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -314,6 +352,17 @@ export default function CustomerHistory() {
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab('dues')}
+          className={`px-6 py-3 text-xs font-bold border-b-2 transition-all ${
+            activeTab === 'dues'
+              ? 'border-accent text-accent-dark'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Pending Dues
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('repeat')}
           className={`px-6 py-3 text-xs font-bold border-b-2 transition-all ${
             activeTab === 'repeat'
@@ -325,7 +374,7 @@ export default function CustomerHistory() {
         </button>
       </div>
 
-      {activeTab === 'all' ? (
+      {activeTab === 'all' || activeTab === 'dues' ? (
         <>
           {/* Filter and Search Bar */}
           <div className="bg-white p-6 rounded-[28px] shadow-soft border border-slate-100/60 space-y-4">
@@ -521,15 +570,23 @@ export default function CustomerHistory() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col gap-0.5">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold w-max ${
-                          entry.paymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                          entry.paymentMode === 'UPI' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
-                          entry.paymentMode === 'Card' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                          'bg-purple-50 text-purple-600 border border-purple-100'
-                        }`}>
-                          {entry.paymentMode}
-                        </span>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold w-max ${
+                            entry.paymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                            entry.paymentMode === 'UPI' ? 'bg-blue-50 text-blue-600 border border-blue-100' :
+                            entry.paymentMode === 'Card' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                            entry.paymentMode === 'Partial' ? 'bg-amber-55 text-amber-700 border border-amber-200' :
+                            'bg-purple-50 text-purple-600 border border-purple-100'
+                          }`}>
+                            {entry.paymentMode}
+                          </span>
+                          {entry.dueStatus === 'pending' && entry.dueAmount > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-600 border border-red-100 animate-pulse">
+                              Due Pending
+                            </span>
+                          )}
+                        </div>
                         {entry.discount > 0 && (
                           <span className="text-[9px] font-bold text-slate-400 flex items-center gap-0.5">
                             <Tag className="w-2.5 h-2.5 text-amber-500" /> Save {formatAmt(entry.discount)}
@@ -538,9 +595,30 @@ export default function CustomerHistory() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <p className="font-extrabold text-slate-900 text-sm">{formatAmt(entry.finalAmount)}</p>
-                      {entry.discount > 0 && (
-                        <p className="text-[10px] text-slate-400 line-through font-medium">{formatAmt(entry.subtotal)}</p>
+                      {entry.dueStatus === 'pending' && entry.dueAmount > 0 ? (
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-slate-500 text-[10px]">Total: {formatAmt(entry.finalAmount)}</p>
+                          <p className="text-[10px] text-emerald-600 font-bold">Paid: {formatAmt(entry.finalAmount - entry.dueAmount)}</p>
+                          <p className="text-[11px] text-red-600 font-extrabold">Due: {formatAmt(entry.dueAmount)}</p>
+                          <button
+                            onClick={() => openClearDueDialog(entry)}
+                            className="text-[10px] font-bold text-primary hover:text-primary-light hover:underline mt-1 block ml-auto"
+                          >
+                            Clear Due
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-extrabold text-slate-900 text-sm">{formatAmt(entry.finalAmount)}</p>
+                          {entry.dueStatus === 'paid' && entry.dueClearMethod && (
+                            <p className="text-[9px] text-slate-400 font-semibold">
+                              (Due Cleared via {entry.dueClearMethod})
+                            </p>
+                          )}
+                          {entry.discount > 0 && (
+                            <p className="text-[10px] text-slate-400 line-through font-medium">{formatAmt(entry.subtotal)}</p>
+                          )}
+                        </>
                       )}
                     </td>
                     {role === 'super_admin' && (
@@ -603,19 +681,46 @@ export default function CustomerHistory() {
                   </div>
 
                   <div className="flex justify-between pt-2 border-t border-slate-50 items-center">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                         entry.paymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-600' :
                         entry.paymentMode === 'UPI' ? 'bg-blue-50 text-blue-600' :
                         entry.paymentMode === 'Card' ? 'bg-amber-50 text-amber-600' :
+                        entry.paymentMode === 'Partial' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                         'bg-purple-50 text-purple-650'
                       }`}>
                         {entry.paymentMode}
                       </span>
+                      {entry.dueStatus === 'pending' && entry.dueAmount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-50 text-red-655 animate-pulse">
+                          Due
+                        </span>
+                      )}
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-extrabold text-slate-900">{formatAmt(entry.finalAmount)}</span>
-                      {entry.discount > 0 && <span className="block text-[9px] text-slate-400 line-through">Sub: {formatAmt(entry.subtotal)}</span>}
+                      {entry.dueStatus === 'pending' && entry.dueAmount > 0 ? (
+                        <div className="space-y-0.5 text-right">
+                          <p className="font-bold text-slate-500 text-[10px]">Total: {formatAmt(entry.finalAmount)}</p>
+                          <p className="text-[10px] text-emerald-600 font-bold">Paid: {formatAmt(entry.finalAmount - entry.dueAmount)}</p>
+                          <p className="text-[10.5px] text-red-600 font-extrabold">Due: {formatAmt(entry.dueAmount)}</p>
+                          <button
+                            onClick={() => openClearDueDialog(entry)}
+                            className="text-[10px] font-bold text-primary hover:text-primary-light hover:underline mt-1 block ml-auto"
+                          >
+                            Clear Due
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="text-sm font-extrabold text-slate-900">{formatAmt(entry.finalAmount)}</span>
+                          {entry.dueStatus === 'paid' && entry.dueClearMethod && (
+                            <p className="text-[9px] text-slate-400 font-semibold">
+                              (Due Cleared via {entry.dueClearMethod})
+                            </p>
+                          )}
+                          {entry.discount > 0 && <span className="block text-[9px] text-slate-400 line-through">Sub: {formatAmt(entry.subtotal)}</span>}
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -746,6 +851,54 @@ export default function CustomerHistory() {
               <span className="text-xs text-slate-400">Once clients visit the salon 2 or more times, they will automatically compile here.</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Clear Due Modal */}
+      {showDueModal && selectedDueEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 max-w-sm w-full space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-bold text-slate-800">Clear Pending Due</h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Customer: <b>{selectedDueEntry.customer?.name || 'Walk-in'}</b>
+              </p>
+              <div className="py-3 bg-rose-50 rounded-2xl border border-rose-100 inline-block px-6">
+                <span className="text-xs font-bold text-slate-500 uppercase block tracking-wider">Due Amount</span>
+                <span className="text-xl font-extrabold text-rose-700">₹{selectedDueEntry.dueAmount}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Select Payment Mode</span>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleClearDueSubmit('Cash')}
+                  className="py-3.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-2xl font-bold transition-all text-xs flex flex-col items-center gap-1.5 active:scale-95 shadow-sm"
+                >
+                  <Wallet className="w-5 h-5 text-emerald-650" />
+                  Cash Received
+                </button>
+                <button
+                  onClick={() => handleClearDueSubmit('UPI')}
+                  className="py-3.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-2xl font-bold transition-all text-xs flex flex-col items-center gap-1.5 active:scale-95 shadow-sm"
+                >
+                  <Smartphone className="w-5 h-5 text-blue-650" />
+                  UPI Received
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowDueModal(false);
+                setSelectedDueEntry(null);
+              }}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-500 text-xs font-bold rounded-2xl transition-all"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

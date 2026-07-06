@@ -56,12 +56,16 @@ const mongooseEntrySchema = new mongoose.Schema({
   subtotal: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   finalAmount: { type: Number, required: true },
-  paymentMode: { type: String, enum: ['Cash', 'UPI', 'Card', 'Mixed'], required: true },
+  paymentMode: { type: String, enum: ['Cash', 'UPI', 'Card', 'Mixed', 'Partial'], required: true },
   paymentBreakdown: {
     cash: { type: Number, default: 0 },
     upi: { type: Number, default: 0 },
     card: { type: Number, default: 0 }
   },
+  dueAmount: { type: Number, default: 0 },
+  dueStatus: { type: String, enum: ['pending', 'paid'], default: 'paid' },
+  dueClearMethod: { type: String, enum: ['Cash', 'UPI'] },
+  dueClearedAt: { type: Date },
   notes: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
