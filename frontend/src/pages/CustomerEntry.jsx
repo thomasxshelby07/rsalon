@@ -340,42 +340,46 @@ export default function CustomerEntry() {
               </div>
 
               {/* Phone Input with dropdown search */}
-              <div className="relative">
+              <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Mobile Number (Search)</label>
-                <div className="relative flex items-center">
-                  <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none gap-1.5">
-                    <Phone className="h-4 w-4 text-slate-400" />
-                    <span className="text-xs font-bold text-slate-500 border-r border-slate-200 pr-2 ml-0.5">+91</span>
-                  </span>
-                  <input
-                    type="tel"
-                    placeholder="Enter 10 digit mobile"
-                    value={customerPhone}
-                    onChange={(e) => {
-                      const clean = e.target.value.replace(/\D/g, '');
-                      setCustomerPhone(clean);
-                    }}
-                    className="form-input phone-input-with-prefix"
-                    maxLength={10}
-                  />
-                </div>
-
-                {/* Autocomplete Dropdown */}
-                {showCustomerDropdown && (
-                  <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200/90 rounded-2xl shadow-2xl shadow-slate-200/80 z-30 max-h-48 overflow-y-auto divide-y divide-slate-100 animate-fadeIn">
-                    {customerSearchResults.map(c => (
-                      <button
-                        key={c._id}
-                        type="button"
-                        onClick={() => selectExistingCustomer(c)}
-                        className="w-full text-left px-5 py-3 hover:bg-slate-50 transition-all text-xs font-semibold text-slate-700 flex justify-between items-center"
-                      >
-                        <span className="font-bold text-slate-800 text-sm">{c.name}</span>
-                        <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">+91 {c.phone}</span>
-                      </button>
-                    ))}
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-50 px-3.5 py-3 border border-slate-200 rounded-2xl text-xs font-bold text-slate-500 shrink-0">
+                    +91
                   </div>
-                )}
+                  <div className="relative flex-1">
+                    <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Phone className="h-4 w-4 text-slate-400" />
+                    </span>
+                    <input
+                      type="tel"
+                      placeholder="Enter 10 digit mobile"
+                      value={customerPhone}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '');
+                        setCustomerPhone(clean);
+                      }}
+                      className="form-input"
+                      maxLength={10}
+                    />
+
+                    {/* Autocomplete Dropdown */}
+                    {showCustomerDropdown && (
+                      <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200/90 rounded-2xl shadow-2xl shadow-slate-200/80 z-30 max-h-48 overflow-y-auto divide-y divide-slate-100 animate-fadeIn">
+                        {customerSearchResults.map(c => (
+                          <button
+                            key={c._id}
+                            type="button"
+                            onClick={() => selectExistingCustomer(c)}
+                            className="w-full text-left px-5 py-3 hover:bg-slate-50 transition-all text-xs font-semibold text-slate-700 flex justify-between items-center"
+                          >
+                            <span className="font-bold text-slate-800 text-sm">{c.name}</span>
+                            <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">+91 {c.phone}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
