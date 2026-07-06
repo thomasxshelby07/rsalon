@@ -32,7 +32,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(!cachedStats); // no skeleton if cache exists
   const [staff, setStaff] = useState(cachedStaff);
   const [servicesList, setServicesList] = useState(cachedServices);
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState(2); // Default to Today & Yesterday (2 days)
   const [selectedService, setSelectedService] = useState('All');
   const role = localStorage.getItem('role');
 
@@ -42,10 +42,11 @@ export default function Dashboard() {
       if (!cachedStats) setLoading(true);
 
       const [statsRes, staffRes, serviceRes] = await Promise.all([
-        apiCall('/dashboard/stats?days=7&serviceName=All'),
+        apiCall('/dashboard/stats?days=2&serviceName=All'), // Default to 2 days
         apiCall('/staff'),
         apiCall('/services')
       ]);
+
 
       const activeStaff = staffRes.filter(s => s.status === 'active').slice(0, 5);
 
@@ -97,8 +98,9 @@ export default function Dashboard() {
   // SVG Chart Calculations
   const chartData = stats?.revenueChart || [];
   const maxRevenue = Math.max(...chartData.map(d => d.revenue), 1000);
-  const chartHeight = 220;
+  const chartHeight = 280; // Increased height to make the chart look larger
   const chartWidth = chartData.length <= 7 ? 500 : Math.max(600, chartData.length * 55);
+
 
 
   return (
@@ -241,7 +243,7 @@ export default function Dashboard() {
 
           {/* Premium Bar Chart */}
           {loading ? (
-            <div className="w-full h-72 flex items-end gap-2 px-4 pb-2 mt-4">
+            <div className="w-full h-80 flex items-end gap-2 px-4 pb-2 mt-4">
               {[60, 80, 45, 90, 55, 70, 40].map((h, i) => (
                 <div key={i} className="flex-1 bg-slate-200 animate-pulse rounded-t-xl" style={{ height: `${h}%` }} />
               ))}
@@ -262,7 +264,8 @@ export default function Dashboard() {
             // Bars data
             const bars = chartData.map((d, i) => {
               const colW = plotW / chartData.length;
-              const barW = Math.min(32, colW * 0.6);
+              // Make bars wider if there are 2 or fewer elements so it doesn't look thin
+              const barW = Math.min(chartData.length <= 2 ? 60 : 32, colW * 0.6);
               const x = padL + i * colW + (colW - barW) / 2;
               const barH = d.revenue > 0 ? Math.max((d.revenue / maxRevenue) * plotH, 6) : 6;
               const y = padT + plotH - barH;
@@ -272,7 +275,7 @@ export default function Dashboard() {
             return (
               <div className="w-full overflow-x-auto mt-2 pb-1">
                 <div style={{ minWidth: chartData.length <= 7 ? '100%' : `${chartWidth}px` }}>
-                  <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-72 overflow-visible">
+                  <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-80 overflow-visible">
                     <defs>
                       <linearGradient id="bar-gradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#EC4899" />
