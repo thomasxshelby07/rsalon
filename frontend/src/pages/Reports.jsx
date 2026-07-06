@@ -157,17 +157,8 @@ export default function Reports() {
   // SVG Chart sizing
   const maxRevenue = Math.max(...chartData.map(d => d.revenue), 1000);
   const rptChartH = 220;
-  const rptChartW = Math.max(600, chartData.length * 60);
+  const rptChartW = chartData.length <= 7 ? 500 : Math.max(600, chartData.length * 55);
 
-  const rptSmoothPath = (pts) => {
-    if (pts.length < 2) return pts.length === 1 ? `M ${pts[0].x} ${pts[0].y}` : '';
-    let d = `M ${pts[0].x} ${pts[0].y}`;
-    for (let i = 1; i < pts.length; i++) {
-      const cpx = (pts[i - 1].x + pts[i].x) / 2;
-      d += ` C ${cpx},${pts[i - 1].y} ${cpx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
-    }
-    return d;
-  };
 
   return (
     <div className="space-y-8">
@@ -299,7 +290,7 @@ export default function Reports() {
 
             return (
               <div className="w-full overflow-x-auto mt-2 pb-1">
-                <div style={{ minWidth: `${rptChartW}px` }}>
+                <div style={{ minWidth: chartData.length <= 7 ? '100%' : `${rptChartW}px` }}>
                   <svg viewBox={`0 0 ${rptChartW} ${rptChartH}`} className="w-full h-72 overflow-visible">
                     <defs>
                       <linearGradient id="rpt-bar-gradient" x1="0" y1="0" x2="0" y2="1">

@@ -98,18 +98,8 @@ export default function Dashboard() {
   const chartData = stats?.revenueChart || [];
   const maxRevenue = Math.max(...chartData.map(d => d.revenue), 1000);
   const chartHeight = 220;
-  const chartWidth = Math.max(600, chartData.length * 60);
+  const chartWidth = chartData.length <= 7 ? 500 : Math.max(600, chartData.length * 55);
 
-  // Smooth bezier line path
-  const makeSmoothPath = (pts) => {
-    if (pts.length < 2) return pts.length === 1 ? `M ${pts[0].x} ${pts[0].y}` : '';
-    let d = `M ${pts[0].x} ${pts[0].y}`;
-    for (let i = 1; i < pts.length; i++) {
-      const cpx = (pts[i - 1].x + pts[i].x) / 2;
-      d += ` C ${cpx},${pts[i - 1].y} ${cpx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
-    }
-    return d;
-  };
 
   return (
     <div className="space-y-8">
@@ -281,7 +271,7 @@ export default function Dashboard() {
 
             return (
               <div className="w-full overflow-x-auto mt-2 pb-1">
-                <div style={{ minWidth: `${chartWidth}px` }}>
+                <div style={{ minWidth: chartData.length <= 7 ? '100%' : `${chartWidth}px` }}>
                   <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-72 overflow-visible">
                     <defs>
                       <linearGradient id="bar-gradient" x1="0" y1="0" x2="0" y2="1">
