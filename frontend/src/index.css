@@ -260,3 +260,8 @@ button[type="submit"]:hover,
 .border-amber-100 {
   border-color: #FBCFE8 !important; /* pink-200 */
 }
+
+/* Custom utility for phone input padding to prevent overlap with +91 code */
+.phone-input-with-prefix {
+  padding-left: 5rem !important;
+}

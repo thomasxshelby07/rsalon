@@ -33,7 +33,7 @@ export default function CustomerEntry() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [selectedStaff, setSelectedStaff] = useState('');
   const [selectedServices, setSelectedServices] = useState([]); // Array of service objects
-  const [discount, setDiscount] = useState(0);
+  const discount = 0;
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [paymentBreakdown, setPaymentBreakdown] = useState({ cash: 0, upi: 0, card: 0 });
   const [partialPaidAmount, setPartialPaidAmount] = useState(0);
@@ -355,7 +355,7 @@ export default function CustomerEntry() {
                       const clean = e.target.value.replace(/\D/g, '');
                       setCustomerPhone(clean);
                     }}
-                    className="form-input !pl-20"
+                    className="form-input phone-input-with-prefix"
                     maxLength={10}
                   />
                 </div>
@@ -632,21 +632,7 @@ export default function CustomerEntry() {
                 <span>₹{subtotal}</span>
               </div>
 
-              {/* Discount Input */}
-              <div className="flex items-center justify-between text-slate-500">
-                <span className="flex items-center gap-1 font-semibold">
-                  <Tag className="w-3.5 h-3.5 text-slate-400" /> Discount (₹)
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  max={subtotal}
-                  value={discount === 0 ? '' : discount}
-                  placeholder="0"
-                  onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))}
-                  className="w-20 px-2 py-1 border border-slate-200 text-right font-bold text-slate-800 focus:outline-none focus:border-accent rounded-lg"
-                />
-              </div>
+
 
               {/* Final Amount */}
               <div className="flex justify-between items-center text-slate-800 font-extrabold text-sm border-t border-slate-50 pt-3">
