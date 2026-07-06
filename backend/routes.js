@@ -889,6 +889,11 @@ router.get('/reports/staff/:staffId', requireAdminOrSuperAdmin, async (req, res)
       };
     });
 
+    const payouts = await SalaryPayout.find({
+      staff: staffId,
+      paidAt: { $gte: range.start, $lte: range.end }
+    });
+
     res.json({
       staff: {
         name: staff.name,
@@ -902,6 +907,16 @@ router.get('/reports/staff/:staffId', requireAdminOrSuperAdmin, async (req, res)
         totalServiceRevenue,
         totalCommissionEarned
       },
+      payouts: payouts.map(p => ({
+        _id: p._id,
+        month: p.month,
+        baseSalary: p.baseSalary,
+        commission: p.commission,
+        totalPaid: p.totalPaid,
+        paymentMethod: p.paymentMethod,
+        notes: p.notes,
+        paidAt: p.paidAt
+      })),
       logs
     });
 

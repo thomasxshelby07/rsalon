@@ -8,7 +8,8 @@ import {
   TrendingUp, 
   Download,
   AlertCircle,
-  Clock
+  Clock,
+  Check
 } from 'lucide-react';
 import apiCall from '../api';
 import { toast } from 'react-hot-toast';
@@ -191,6 +192,47 @@ export default function StaffReport() {
         </div>
       ) : reportData ? (
         <div className="space-y-6">
+          {/* Payout Status Alert Banner */}
+          {reportData.payouts && reportData.payouts.length > 0 ? (
+            <div className="bg-emerald-50 border border-emerald-100/60 p-4.5 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                  <Check className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="block font-bold text-slate-800 text-xs sm:text-sm">
+                    Disbursement Recorded: Paid {"₹" + reportData.payouts.reduce((sum, p) => sum + p.totalPaid, 0).toLocaleString("en-IN")} for this period
+                  </span>
+                  <span className="block text-[10px] text-slate-500 font-semibold mt-0.5">
+                    {reportData.payouts.map(p => `${p.paymentMethod} on ${new Date(p.paidAt).toLocaleDateString('en-IN')}${p.notes ? ` (${p.notes})` : ''}`).join(' | ')}
+                  </span>
+                </div>
+              </div>
+              <span className="self-start sm:self-auto inline-block bg-emerald-500 text-white px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                Paid
+              </span>
+            </div>
+          ) : (
+            <div className="bg-amber-50/70 border border-amber-100/60 p-4.5 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shrink-0">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="block font-bold text-slate-800 text-xs sm:text-sm">
+                    Payroll Status: Pending Payout
+                  </span>
+                  <span className="block text-[10px] text-slate-500 font-semibold mt-0.5">
+                    No salary disbursement logs recorded for this stylist in the selected timeframe.
+                  </span>
+                </div>
+              </div>
+              <span className="self-start sm:self-auto inline-block bg-amber-500 text-white px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                Unpaid
+              </span>
+            </div>
+          )}
+
           {/* KPI Dashboard */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 sm:gap-6">
             <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-4">

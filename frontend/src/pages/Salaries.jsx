@@ -50,12 +50,14 @@ export default function Salaries() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [staffRes, reportRes] = await Promise.all([
+      const [staffRes, reportRes, payoutsRes] = await Promise.all([
         apiCall('/staff'),
-        apiCall('/reports')
+        apiCall('/reports'),
+        apiCall('/salaries/payout')
       ]);
       setStaff(staffRes.filter(s => s.status === 'active'));
       setReport(reportRes);
+      setPayoutHistory(payoutsRes);
       
       // Initialize inline inputs
       const initialEdits = {};
@@ -153,6 +155,7 @@ export default function Salaries() {
       });
       toast.success(`Salary payment recorded for ${payTargetStaff.name}!`);
       setShowPayModal(false);
+      fetchData(); // Refresh logs to sync Paid badges
       
       // If user is currently on the history tab, refresh history
       if (activeTab === 'history') {
@@ -174,6 +177,7 @@ export default function Salaries() {
       await apiCall(`/salaries/payout/${payoutId}`, { method: 'DELETE' });
       toast.success('Payout record reversed successfully');
       fetchPayoutHistory();
+      fetchData(); // Sync Paid badges back to unpaid status
     } catch (err) {
       toast.error(err.message || 'Failed to reverse payout record');
     }
@@ -227,6 +231,13 @@ export default function Salaries() {
       ? Math.round(((st.salary || 0) * presentCount) / totalWorkingDays)
       : (st.salary || 0);
 
+    const currentMonthStr = new Date().toISOString().slice(0, 7);
+    const matchedPayout = (payoutHistory || []).find(p => {
+      const pStaffId = p.staff?._id || p.staff;
+      return pStaffId === st._id && p.month === currentMonthStr;
+    });
+    const isPaid = !!matchedPayout;
+
     const commissionVal = Math.round((perf.revenue * edits.commission) / 100);
     const totalPayout = edits.salary + commissionVal;
     
@@ -243,7 +254,8 @@ export default function Salaries() {
       presentCount,
       leaveCount,
       absentCount,
-      suggestedFixedBase
+      suggestedFixedBase,
+      isPaid
     };
   });
 
@@ -427,18 +439,24 @@ export default function Salaries() {
                             >
                               <Save className="w-3.5 h-3.5" /> Save
                             </button>
-                            <button
-                              onClick={() => {
-                                setPayTargetStaff(st);
-                                setPayBase(st.suggestedFixedBase || st.salary || 0);
-                                setPayCommission(st.commissionEarned || 0);
-                                setPayNotes(`Salary and commission payment for month`);
-                                setShowPayModal(true);
-                              }}
-                              className="btn-primary !py-1.5 !px-3 text-[10px] font-bold flex items-center gap-1 hover:shadow-sm"
-                            >
-                              <Coins className="w-3.5 h-3.5" /> Pay
-                            </button>
+                            {st.isPaid ? (
+                              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 border border-emerald-100 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                                <Check className="w-3.5 h-3.5 text-emerald-650" /> Paid
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setPayTargetStaff(st);
+                                  setPayBase(st.suggestedFixedBase || st.salary || 0);
+                                  setPayCommission(st.commissionEarned || 0);
+                                  setPayNotes(`Salary and commission payment for month`);
+                                  setShowPayModal(true);
+                                }}
+                                className="btn-primary !py-1.5 !px-3 text-[10px] font-bold flex items-center gap-1 hover:shadow-sm"
+                              >
+                                <Coins className="w-3.5 h-3.5" /> Pay
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -469,18 +487,24 @@ export default function Salaries() {
                       >
                         <Save className="w-3 h-3" /> Save
                       </button>
-                      <button
-                        onClick={() => {
-                          setPayTargetStaff(st);
-                          setPayBase(st.suggestedFixedBase || st.salary || 0);
-                          setPayCommission(st.commissionEarned || 0);
-                          setPayNotes(`Salary and commission payment for month`);
-                          setShowPayModal(true);
-                        }}
-                        className="btn-primary !py-1.5 !px-3 text-[10px] font-bold flex items-center gap-1"
-                      >
-                        <Coins className="w-3 h-3" /> Pay
-                      </button>
+                      {st.isPaid ? (
+                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 border border-emerald-100 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider">
+                          <Check className="w-3.5 h-3.5 text-emerald-650" /> Paid
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setPayTargetStaff(st);
+                            setPayBase(st.suggestedFixedBase || st.salary || 0);
+                            setPayCommission(st.commissionEarned || 0);
+                            setPayNotes(`Salary and commission payment for month`);
+                            setShowPayModal(true);
+                          }}
+                          className="btn-primary !py-1.5 !px-3 text-[10px] font-bold flex items-center gap-1"
+                        >
+                          <Coins className="w-3 h-3" /> Pay
+                        </button>
+                      )}
                     </div>
                   </div>
 
