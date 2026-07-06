@@ -6,7 +6,6 @@ import {
   CreditCard, 
   IndianRupee, 
   Plus, 
-  Activity, 
   ChevronRight, 
   ShoppingBag,
   Clock,
@@ -17,6 +16,11 @@ import {
 import { motion } from 'framer-motion';
 import apiCall from '../api';
 import { toast } from 'react-hot-toast';
+
+// Shimmer skeleton block
+const Sk = ({ w = 'w-20', h = 'h-6', rounded = 'rounded-lg' }) => (
+  <div className={`${w} ${h} ${rounded} bg-slate-200 animate-pulse`} />
+);
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -59,27 +63,13 @@ export default function Dashboard() {
     initDashboard();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-        <div className="text-center">
-          <p className="text-sm font-bold text-slate-600">Loading Dashboard...</p>
-          <p className="text-xs text-slate-400 mt-1">Server is starting up, please wait a moment</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!stats) return null;
-
   // Format currency helper
   const formatAmt = (val) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
 
   // Helper for Payment Percentages
-  const cashVal = stats.paymentSplit?.cash || 0;
-  const upiVal = stats.paymentSplit?.upi || 0;
-  const cardVal = stats.paymentSplit?.card || 0;
+  const cashVal = stats?.paymentSplit?.cash || 0;
+  const upiVal = stats?.paymentSplit?.upi || 0;
+  const cardVal = stats?.paymentSplit?.card || 0;
   const totalSplit = cashVal + upiVal + cardVal;
   const divisor = totalSplit || 1;
   const cashPct = Math.round((cashVal / divisor) * 100);
@@ -87,11 +77,10 @@ export default function Dashboard() {
   const cardPct = Math.round((cardVal / divisor) * 100);
 
   // SVG Chart Calculations (7 Days Revenue)
-  const chartData = stats.revenueChart || [];
+  const chartData = stats?.revenueChart || [];
   const maxRevenue = Math.max(...chartData.map(d => d.revenue), 1000);
   const chartHeight = 120;
   const chartWidth = Math.max(500, chartData.length * 52);
-
 
   return (
     <div className="space-y-8">
@@ -116,78 +105,78 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Statistics Row - Responsive 2x2 on Mobile, 4x1 on Large Screens */}
+      {/* Statistics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {/* Today's Revenue */}
-        <div 
-          className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5"
-        >
+        <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5">
           <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm shrink-0">
             <IndianRupee className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
             <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Today's Revenue</span>
-            <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{formatAmt(stats.todayRevenue)}</span>
+            {loading ? <Sk w="w-16" h="h-6" /> : (
+              <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{formatAmt(stats?.todayRevenue)}</span>
+            )}
           </div>
         </div>
 
         {/* Today's Customers */}
-        <div 
-          className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5"
-        >
+        <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5">
           <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm shrink-0">
             <Users className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
             <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Today's Visits</span>
-            <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{stats.todayCustomers}</span>
+            {loading ? <Sk w="w-10" h="h-6" /> : (
+              <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{stats?.todayCustomers ?? 0}</span>
+            )}
           </div>
         </div>
 
         {/* Monthly Revenue (Super Admin) or Total Services today */}
         {role === 'super_admin' ? (
-          <div 
-            className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5"
-          >
+          <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5">
             <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-650 flex items-center justify-center shadow-sm shrink-0">
               <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Month Revenue</span>
-              <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{formatAmt(stats.monthlyRevenue)}</span>
+              {loading ? <Sk w="w-16" h="h-6" /> : (
+                <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{formatAmt(stats?.monthlyRevenue)}</span>
+              )}
             </div>
           </div>
         ) : (
-          <div 
-            className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5"
-          >
+          <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5">
             <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-amber-50 text-amber-650 flex items-center justify-center shadow-sm shrink-0">
               <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Services Sold</span>
-              <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{stats.todayServicesCount} Services Sold</span>
+              {loading ? <Sk w="w-14" h="h-6" /> : (
+                <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{stats?.todayServicesCount ?? 0} Sold</span>
+              )}
             </div>
           </div>
         )}
 
         {/* Average Bill */}
-        <div 
-          className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5"
-        >
+        <div className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-soft border border-slate-100/60 flex items-center gap-3 sm:gap-5">
           <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-sm shrink-0">
             <CreditCard className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
             <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Average Ticket</span>
-            <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{formatAmt(stats.averageBill)}</span>
+            {loading ? <Sk w="w-14" h="h-6" /> : (
+              <span className="text-base sm:text-2xl font-extrabold text-slate-800 tracking-tight block mt-0.5">{formatAmt(stats?.averageBill)}</span>
+            )}
           </div>
         </div>
       </div>
 
       {/* Main Charts & breakdowns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Chart Column (2/3 width on Super Admin, full or payment on admin) */}
+        {/* Chart Column */}
         <div className="lg:col-span-2 bg-white p-6 rounded-[28px] shadow-soft border border-slate-100/60">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-50">
             <div>
@@ -231,8 +220,14 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* SVG Bar Chart */}
-          {chartData.length > 0 ? (
+          {/* SVG Bar Chart or Skeleton */}
+          {loading ? (
+            <div className="w-full h-44 flex items-end gap-2 px-4 pb-2">
+              {[60, 80, 45, 90, 55, 70, 40].map((h, i) => (
+                <div key={i} className="flex-1 bg-slate-200 animate-pulse rounded-t-lg" style={{ height: `${h}%` }} />
+              ))}
+            </div>
+          ) : chartData.length > 0 ? (
             <div className="w-full overflow-x-auto mt-4 pb-2">
               <div style={{ minWidth: chartData.length > 10 ? `${chartData.length * 36}px` : '100%' }}>
                 <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-44 overflow-visible">
@@ -261,35 +256,13 @@ export default function Dashboard() {
                     return (
                       <g key={idx} className="group">
                         {/* Bar track background */}
-                        <rect
-                          x={x}
-                          y={15}
-                          width={barWidth}
-                          height={chartHeight - 30}
-                          rx={4}
-                          fill="#FFF0F6"
-                          opacity="0.8"
-                        />
-
+                        <rect x={x} y={15} width={barWidth} height={chartHeight - 30} rx={4} fill="#FFF0F6" opacity="0.8" />
                         {/* Bar rect */}
                         {d.revenue > 0 && (
-                          <rect
-                            x={x}
-                            y={y}
-                            width={barWidth}
-                            height={Math.max(barHeight, 4)}
-                            rx={4}
-                            fill="url(#bar-grad)"
-                          />
+                          <rect x={x} y={y} width={barWidth} height={Math.max(barHeight, 4)} rx={4} fill="url(#bar-grad)" />
                         )}
-                        
                         {/* Revenue label on top of bar */}
-                        <text
-                          x={x + barWidth / 2}
-                          y={y - 6}
-                          textAnchor="middle"
-                          className="text-[9px] font-extrabold text-pink-600"
-                        >
+                        <text x={x + barWidth / 2} y={y - 6} textAnchor="middle" className="text-[9px] font-extrabold text-pink-600">
                           {d.revenue > 0 ? `₹${d.revenue.toLocaleString('en-IN')}` : ''}
                         </text>
                       </g>
@@ -321,47 +294,41 @@ export default function Dashboard() {
           <div className="my-6 space-y-4">
             {/* Cash */}
             <div>
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
-                <span className="flex items-center gap-1.5">
-                  <Wallet className="w-3.5 h-3.5 text-emerald-500" /> Cash
-                </span>
-                <span>{formatAmt(cashVal)} ({cashPct}%)</span>
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-600 mb-1.5">
+                <span className="flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-emerald-500" /> Cash</span>
+                {loading ? <Sk w="w-20" h="h-4" /> : <span>{formatAmt(cashVal)} ({cashPct}%)</span>}
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${cashPct}%` }} />
+                <div className={`h-full rounded-full transition-all duration-700 ${loading ? 'bg-slate-200 animate-pulse w-1/2' : 'bg-emerald-500'}`} style={!loading ? { width: `${cashPct}%` } : {}} />
               </div>
             </div>
 
             {/* UPI */}
             <div>
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
-                <span className="flex items-center gap-1.5">
-                  <Smartphone className="w-3.5 h-3.5 text-blue-500" /> UPI
-                </span>
-                <span>{formatAmt(upiVal)} ({upiPct}%)</span>
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-600 mb-1.5">
+                <span className="flex items-center gap-1.5"><Smartphone className="w-3.5 h-3.5 text-blue-500" /> UPI</span>
+                {loading ? <Sk w="w-20" h="h-4" /> : <span>{formatAmt(upiVal)} ({upiPct}%)</span>}
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-blue-500 h-full rounded-full" style={{ width: `${upiPct}%` }} />
+                <div className={`h-full rounded-full transition-all duration-700 ${loading ? 'bg-slate-200 animate-pulse w-1/3' : 'bg-blue-500'}`} style={!loading ? { width: `${upiPct}%` } : {}} />
               </div>
             </div>
 
             {/* Card */}
             <div>
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
-                <span className="flex items-center gap-1.5">
-                  <CreditCard className="w-3.5 h-3.5 text-amber-500" /> Card
-                </span>
-                <span>{formatAmt(cardVal)} ({cardPct}%)</span>
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-600 mb-1.5">
+                <span className="flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5 text-amber-500" /> Card</span>
+                {loading ? <Sk w="w-20" h="h-4" /> : <span>{formatAmt(cardVal)} ({cardPct}%)</span>}
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div className="bg-amber-500 h-full rounded-full" style={{ width: `${cardPct}%` }} />
+                <div className={`h-full rounded-full transition-all duration-700 ${loading ? 'bg-slate-200 animate-pulse w-1/4' : 'bg-amber-500'}`} style={!loading ? { width: `${cardPct}%` } : {}} />
               </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-50 dark:border-slate-700/60 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
+          <div className="pt-4 border-t border-slate-50 flex items-center justify-between text-xs font-bold text-slate-800">
             <span>Total Collected</span>
-            <span>{formatAmt(totalSplit)}</span>
+            {loading ? <Sk w="w-16" h="h-4" /> : <span>{formatAmt(totalSplit)}</span>}
           </div>
         </div>
       </div>
@@ -375,17 +342,27 @@ export default function Dashboard() {
               <h3 className="font-bold text-slate-800 text-sm">Recent Salon Entries</h3>
               <p className="text-xs text-slate-400">List of latest visits registered</p>
             </div>
-            <Link 
-              to="/customer-history" 
-              className="text-xs font-bold text-slate-400 hover:text-accent-dark flex items-center gap-0.5 transition-colors"
-            >
+            <Link to="/customer-history" className="text-xs font-bold text-slate-400 hover:text-accent-dark flex items-center gap-0.5 transition-colors">
               View History <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          {stats.recentEntries && stats.recentEntries.length > 0 ? (
+          {loading ? (
+            // Skeleton rows
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+                  <div className="space-y-2">
+                    <Sk w="w-24" h="h-3" />
+                    <Sk w="w-16" h="h-2.5" />
+                  </div>
+                  <Sk w="w-14" h="h-5" rounded="rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : stats?.recentEntries && stats.recentEntries.length > 0 ? (
             <>
-              {/* Desktop View Table - Hidden on Mobile */}
+              {/* Desktop View Table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -410,9 +387,7 @@ export default function Dashboard() {
                           </span>
                         </td>
                         <td className="py-3 max-w-[200px] truncate">
-                          <span className="text-slate-600 font-medium">
-                            {entry.services.map(s => s.name).join(', ')}
-                          </span>
+                          <span className="text-slate-600 font-medium">{entry.services.map(s => s.name).join(', ')}</span>
                         </td>
                         <td className="py-3">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -424,16 +399,14 @@ export default function Dashboard() {
                             {entry.paymentMode}
                           </span>
                         </td>
-                        <td className="py-3 text-right font-extrabold text-slate-800">
-                          {formatAmt(entry.finalAmount)}
-                        </td>
+                        <td className="py-3 text-right font-extrabold text-slate-800">{formatAmt(entry.finalAmount)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Mobile View List - Hidden on Desktop */}
+              {/* Mobile View List */}
               <div className="block md:hidden space-y-3">
                 {stats.recentEntries.map((entry) => (
                   <div key={entry._id} className="p-4 bg-slate-50/50 border border-slate-100 rounded-2xl space-y-2.5">
@@ -454,11 +427,8 @@ export default function Dashboard() {
                         </span>
                       </div>
                     </div>
-                    
                     <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2 items-center justify-between text-[11px]">
-                      <span className="text-slate-600 font-semibold truncate max-w-[170px]">
-                        {entry.services.map(s => s.name).join(', ')}
-                      </span>
+                      <span className="text-slate-600 font-semibold truncate max-w-[170px]">{entry.services.map(s => s.name).join(', ')}</span>
                       <span className="px-2 py-0.5 bg-white border border-slate-150 rounded-lg text-slate-500 font-bold text-[9px]">
                         Stylist: {entry.staff?.name || 'N/A'}
                       </span>
@@ -475,65 +445,93 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Top Staff / Services List (Super Admin only or general summaries) */}
+        {/* Top Staff / Services List */}
         <div className="bg-white p-6 rounded-[28px] shadow-soft border border-slate-100/60">
-          {role === 'super_admin' && stats.topStaff ? (
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm">Top Stylists</h3>
-                <p className="text-xs text-slate-400">Highest revenue drivers</p>
-              </div>
-
+          {role === 'super_admin' ? (
+            loading ? (
+              // Skeleton for top staff
               <div className="space-y-4">
-                {stats.topStaff.map((st, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs">
+                <div className="space-y-1">
+                  <Sk w="w-24" h="h-4" />
+                  <Sk w="w-32" h="h-3" />
+                </div>
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center font-bold text-slate-600">
-                        {i + 1}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800">{st.name}</p>
-                        <p className="text-[10px] text-slate-400">{st.role}</p>
+                      <Sk w="w-8" h="h-8" rounded="rounded-lg" />
+                      <div className="space-y-1.5">
+                        <Sk w="w-20" h="h-3" />
+                        <Sk w="w-14" h="h-2.5" />
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-extrabold text-slate-800">{formatAmt(st.revenue)}</p>
-                      <p className="text-[10px] text-slate-400 font-bold">{st.customers} visits</p>
+                    <div className="space-y-1.5 text-right">
+                      <Sk w="w-14" h="h-3" />
+                      <Sk w="w-10" h="h-2.5" />
                     </div>
                   </div>
                 ))}
               </div>
-
-              <div className="pt-6 border-t border-slate-50">
-                <div className="mb-4">
-                  <h3 className="font-bold text-slate-800 text-sm">Popular Services</h3>
-                  <p className="text-xs text-slate-400">Most requested services</p>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Top Stylists</h3>
+                  <p className="text-xs text-slate-400">Highest revenue drivers</p>
                 </div>
-                <div className="space-y-3">
-                  {stats.topServices && stats.topServices.map((svc, i) => (
-                    <div key={i} className="flex justify-between items-center text-xs">
-                      <div>
-                        <p className="font-bold text-slate-800">{svc.name}</p>
-                        <p className="text-[10px] text-slate-400">{svc.category}</p>
+                <div className="space-y-4">
+                  {stats?.topStaff?.map((st, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center font-bold text-slate-600">{i + 1}</div>
+                        <div>
+                          <p className="font-bold text-slate-800">{st.name}</p>
+                          <p className="text-[10px] text-slate-400">{st.role}</p>
+                        </div>
                       </div>
-                      <span className="px-2 py-0.5 bg-slate-50 rounded-lg text-[10px] font-bold text-slate-600">
-                        {svc.count} sales
-                      </span>
+                      <div className="text-right">
+                        <p className="font-extrabold text-slate-800">{formatAmt(st.revenue)}</p>
+                        <p className="text-[10px] text-slate-400 font-bold">{st.customers} visits</p>
+                      </div>
                     </div>
                   ))}
                 </div>
+                <div className="pt-6 border-t border-slate-50">
+                  <div className="mb-4">
+                    <h3 className="font-bold text-slate-800 text-sm">Popular Services</h3>
+                    <p className="text-xs text-slate-400">Most requested services</p>
+                  </div>
+                  <div className="space-y-3">
+                    {stats?.topServices?.map((svc, i) => (
+                      <div key={i} className="flex justify-between items-center text-xs">
+                        <div>
+                          <p className="font-bold text-slate-800">{svc.name}</p>
+                          <p className="text-[10px] text-slate-400">{svc.category}</p>
+                        </div>
+                        <span className="px-2 py-0.5 bg-slate-50 rounded-lg text-[10px] font-bold text-slate-600">{svc.count} sales</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )
           ) : (
-            // Show Operational Shortcuts for Admin
+            // Admin view — Staff Register
             <div className="h-full flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-slate-800 text-sm">Staff Register</h3>
                 <p className="text-xs text-slate-400">View active operational staff</p>
               </div>
-
               <div className="space-y-3 my-4">
-                {staff.length > 0 ? (
+                {loading ? (
+                  [1, 2, 3].map(i => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-2xl border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-slate-200 animate-pulse" />
+                        <Sk w="w-20" h="h-3" />
+                      </div>
+                      <Sk w="w-14" h="h-4" rounded="rounded" />
+                    </div>
+                  ))
+                ) : staff.length > 0 ? (
                   staff.map((st) => (
                     <div key={st._id} className="flex items-center justify-between p-3 bg-slate-50/50 hover:bg-slate-50 rounded-2xl border border-slate-100 transition-colors">
                       <div className="flex items-center gap-3">
@@ -544,10 +542,9 @@ export default function Dashboard() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 text-center py-4">No active staff styles registered</p>
+                  <p className="text-xs text-slate-400 text-center py-4">No active staff registered</p>
                 )}
               </div>
-
               <div className="p-4 bg-accent/15 border border-accent/25 rounded-2xl text-xs flex flex-col gap-1 text-accent-dark">
                 <span className="font-bold">Operational Note:</span>
                 <span>Select active stylists inside the Customer Entry form to ensure performance reports calculate correctly.</span>
