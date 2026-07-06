@@ -275,12 +275,7 @@ const DashboardLayout = ({ children }) => {
             <div className="w-8 h-8 rounded-xl overflow-hidden border border-pink-100 shadow-sm">
               <img src={settings.logo || logoImg} alt="Logo" className="w-full h-full object-cover scale-110" />
             </div>
-            <div className="text-left">
-              <p className="text-sm font-extrabold text-primary-dark leading-none">{settings.salonName}</p>
-              <span className="text-[10px] font-bold text-accent-dark">
-                {role === 'super_admin' ? 'Super Admin' : 'Admin'}
-              </span>
-            </div>
+            <p className="text-sm font-extrabold text-primary-dark leading-none">{settings.salonName}</p>
           </div>
 
           {/* Right: Profile */}
